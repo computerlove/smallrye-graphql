@@ -32,11 +32,6 @@ public class SmallRyeContextAccessorProxy extends SmallRyeContext {
     }
 
     @Override
-    public SmallRyeContext withDataFromExecution(ExecutionInput executionInput) {
-        return SmallRyeContext.getContext().withDataFromExecution(executionInput);
-    }
-
-    @Override
     public SmallRyeContext withDataFromExecution(ExecutionInput executionInput, QueryCache queryCache) {
         return SmallRyeContext.getContext().withDataFromExecution(executionInput, queryCache);
     }

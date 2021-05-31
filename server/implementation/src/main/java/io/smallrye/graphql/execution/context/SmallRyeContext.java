@@ -65,10 +65,6 @@ public class SmallRyeContext implements Context {
         current.set(context);
     }
 
-    public SmallRyeContext withDataFromExecution(ExecutionInput executionInput) {
-        return new SmallRyeContext(this.jsonObject, this.dfe, executionInput, this.queryCache, this.field);
-    }
-
     public SmallRyeContext withDataFromExecution(ExecutionInput executionInput, QueryCache queryCache) {
         return new SmallRyeContext(this.jsonObject, this.dfe, executionInput, queryCache, this.field);
     }
