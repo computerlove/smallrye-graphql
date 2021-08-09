@@ -11,6 +11,7 @@ import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import io.smallrye.graphql.execution.context.SmallRyeContext;
 import io.smallrye.graphql.execution.datafetcher.helper.FieldHelper;
+import io.smallrye.graphql.execution.event.EventEmitter;
 import io.smallrye.graphql.schema.model.Field;
 import io.smallrye.graphql.schema.model.Reference;
 import io.smallrye.graphql.spi.ClassloadingService;
@@ -52,31 +53,37 @@ public class FieldDataFetcher<T> implements DataFetcher<T>, TrivialDataFetcher<T
 
     @Override
     public T get(DataFetchingEnvironment dfe) throws Exception {
-        if (dfe.getContext() != null) {
-            GraphQLContext graphQLContext = dfe.getContext();
-            graphQLContext.put("context", ((SmallRyeContext) graphQLContext.get("context")).withDataFromFetcher(dfe, field));
-        }
-
-        if (this.propertyAccessor == null) {
-            // lazy initialize method handle, does not have to be threadsafe
-            this.propertyAccessor = buildPropertyAccessor();
-        }
-
-        Object source = dfe.getSource();
-        Object resultFromMethodCall = propertyAccessor.get(source);
         try {
-            // See if we need to transform
-            @SuppressWarnings("unchecked")
-            T transformResponse = (T) fieldHelper.transformResponse(resultFromMethodCall);
-            return transformResponse;
-        } catch (AbstractDataFetcherException ex) {
-            log.transformError(ex);
-            @SuppressWarnings("unchecked")
-            T result = (T) resultFromMethodCall;
-            //TODO: if transformResponse was necessary but failed,
-            // resultFromMethodCall would most likely have the wrong type,
-            // so this would just produce another error. Better just throw GraphQLException?
-            return result;
+            if (dfe.getContext() != null) {
+                GraphQLContext graphQLContext = dfe.getContext();
+                graphQLContext.put("context", ((SmallRyeContext) graphQLContext.get("context")).withDataFromFetcher(dfe, field));
+            }
+
+            if (this.propertyAccessor == null) {
+                // lazy initialize method handle, does not have to be threadsafe
+                this.propertyAccessor = buildPropertyAccessor();
+            }
+
+            Object source = dfe.getSource();
+            Object resultFromMethodCall = propertyAccessor.get(source);
+            try {
+                // See if we need to transform
+                @SuppressWarnings("unchecked")
+                T transformResponse = (T) fieldHelper.transformResponse(resultFromMethodCall);
+                return transformResponse;
+            } catch (AbstractDataFetcherException ex) {
+                EventEmitter.getInstance().fireOnDataFetchError(dfe.getExecutionId().toString(), ex);
+                log.transformError(ex);
+                @SuppressWarnings("unchecked")
+                T result = (T) resultFromMethodCall;
+                //TODO: if transformResponse was necessary but failed,
+                // resultFromMethodCall would most likely have the wrong type,
+                // so this would just produce another error. Better just throw GraphQLException?
+                return result;
+            }
+        } catch (Exception ex) {
+            EventEmitter.getInstance().fireOnDataFetchError(dfe.getExecutionId().toString(), ex);
+            throw ex;
         }
     }
 
